@@ -1,3 +1,24 @@
+fxl, mar 19 2025
+
+to build musl, needs to manually specify 
+```
+export CROSS_COMPILE=aarch64-linux-gnu- ./configure --target=aarch64
+```
+otherwise will build for x86_64
+
+## notes on disk image
+
+mksd.mk produces two images (for boot and for rootfs) and then combines them into sd.img.
+then give sd.img to qemu (i.e. wihtout speficifying -kernel), just let qemu emulate load of the kernel from sdcard partition1 
+  (I guess qemu can do that?)
+
+how to burn on actual sd card? 
+genate image and then burn? 
+"which can be burned to a tf card using Raspberry Pi Imager." - Ok
+
+
+--- below are original README.md ---
+
 # Raspberry Pi Operating System
 
 Yet another unix-like toy operating system running on Raspberry Pi 3/4, which is built when I was preparing [labs](https://github.com/FDUCSLG/OS-2020Fall-Fudan/) for operating system course at Fudan University, following the classic framework of [xv6](https://github.com/mit-pdos/xv6-public/).

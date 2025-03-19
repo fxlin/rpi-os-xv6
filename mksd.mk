@@ -29,6 +29,7 @@ $(FS_IMG): $(shell find obj/usr/bin -type f)
 	cc $(shell find usr/src/mkfs/ -name "*.c") -o obj/mkfs
 	./obj/mkfs $@ $^
 
+# fxl: below, pack the boot and fs image into a single sd card image
 $(SD_IMG): $(BOOT_IMG) $(FS_IMG)
 	dd if=/dev/zero of=$@ seek=$$(($(SECTORS) - 1)) bs=$(SECTOR_SIZE) count=1
 	printf "                                                                \
