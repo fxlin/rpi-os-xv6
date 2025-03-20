@@ -1,5 +1,7 @@
 fxl, mar 19 2025
 
+Primary goal is to add benchmark support for cmp vs. UVA OS
+
 to build musl, needs to manually specify 
 ```
 export CROSS_COMPILE=aarch64-linux-gnu- ./configure --target=aarch64
