@@ -1,3 +1,6 @@
+3/20/25 fxl. added benchmark support to compare vs. UVA OS
+
+--- below is the original readme ---
 # Raspberry Pi Operating System
 
 Yet another unix-like toy operating system running on Raspberry Pi 3/4, which is built when I was preparing [labs](https://github.com/FDUCSLG/OS-2020Fall-Fudan/) for operating system course at Fudan University, following the classic framework of [xv6](https://github.com/mit-pdos/xv6-public/).
