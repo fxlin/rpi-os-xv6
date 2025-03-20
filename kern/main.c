@@ -51,6 +51,10 @@ main()
     trap_init();
     info("cpu %d init finished", cpuid());
 
+    unsigned sec, msec; 
+    current_time(&sec, &msec);
+    info("fxl: current_time = %d.%d", sec, msec);
+
     scheduler();
 
     panic("scheduler return.\n");

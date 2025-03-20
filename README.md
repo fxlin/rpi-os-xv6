@@ -16,6 +16,10 @@ how to burn on actual sd card?
 genate image and then burn? 
 "which can be burned to a tf card using Raspberry Pi Imager." - Ok
 
+### syscall number def: 
+musl 
+arch/aarch64/bits/syscall.h.in
+obj/include/bits/syscall.h
 
 --- below are original README.md ---
 

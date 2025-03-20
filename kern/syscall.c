@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "memlayout.h"
 #include "trap.h"
+#include "timer.h"  // fxl
 #include "console.h"
 #include "proc.h"
 #include "debug.h"
@@ -136,6 +137,8 @@ argstr(int n, char **pp)
     return r;
 }
 
+// fxl: this seems to directly use syscall macro/number defined by musl. 
+// cf: obj/include/bits/syscall.h in musl 
 int
 syscall1(struct trapframe *tf)
 {
@@ -147,16 +150,19 @@ syscall1(struct trapframe *tf)
     case SYS_set_tid_address:
         trace("set_tid_address: name '%s'", thisproc()->name);
         return thisproc()->pid;
-    case SYS_gettid:
+    case SYS_gettid: 
         trace("gettid: name '%s'", thisproc()->name);
         return thisproc()->pid;
-
+    case SYS_getpid:    // fxl added
+        return thisproc()->pid;  
         // FIXME: Hack TIOCGWINSZ(get window size)
-    case SYS_ioctl:
+    case SYS_ioctl:  
         trace("ioctl: name '%s'", thisproc()->name);
         if (tf->x[1] == 0x5413)
             return 0;
-        else
+        else if (tf->x[1] == 0x1000) // fxl: repurpose this for get current time. 
+            return current_counter(); // in ms
+        else 
             panic("ioctl unimplemented. ");
 
         // FIXME: always return 0 since we don't have signals  :)

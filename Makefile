@@ -28,7 +28,8 @@ KERN_IMG := $(BUILD_DIR)/kernel8.img
 SD_IMG := $(BUILD_DIR)/sd.img
 
 all:
-	$(MAKE) -C boot
+# will download firmware
+#	$(MAKE) -C boot
 	$(MAKE) -C usr
 	$(MAKE) $(SD_IMG)
 
