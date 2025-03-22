@@ -17,8 +17,10 @@ void
 test_fork()
 {
     int n = 10;
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++) {
         fork1();
+        printf("forked %d\n", i);
+    }
     for (int i = 0; i < n; i++)
         wait(NULL);
 }

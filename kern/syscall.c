@@ -161,7 +161,7 @@ syscall1(struct trapframe *tf)
         if (tf->x[1] == 0x5413)
             return 0;
         else if (tf->x[1] == 0x1000) // fxl: repurpose this for get current time. 
-            return current_counter(); // in ms
+            return current_counter() / 1000; // in ms
         else 
             panic("ioctl unimplemented. ");
 
@@ -172,6 +172,7 @@ syscall1(struct trapframe *tf)
         return 0;
 
     case SYS_brk:
+        trace("sys_brk: name '%s'", thisproc()->name);
         return sys_brk();
     case SYS_mmap:
         return sys_mmap();
@@ -182,8 +183,11 @@ syscall1(struct trapframe *tf)
     case SYS_sched_yield:
         return sys_yield();
 
-    case SYS_clone:
+    case SYS_clone:     // fxl: no fork, just clone()???
         return sys_clone();
+    
+    // case SYS_fork:       // fxl: musl header no such a num, only clone
+        // return fork();  
 
     case SYS_wait4:
         return sys_wait4();

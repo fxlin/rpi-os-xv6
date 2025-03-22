@@ -4,23 +4,30 @@
 // syscall number: musl arch/aarch64/bits/syscall.h.in
 
 
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/stat.h>
+#include <assert.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/ioctl.h>
 
+#define _GNU_SOURCE
+#include <sched.h> // clone
 // #define prxxx printf
 #define prxxx(...)
 
 // in ms, cf kern/syscall.c
-int uptime(void) {
+int uptime(void) {    
     unsigned long ret = ioctl(0/*does not care*/, 0x1000); 
     // printf("uptime: %lu\n", ret);
     return (int)ret;  // we indeed lose precision here.
 }
+
+#define uptime_ms uptime
 
 #define DEFAULT_ITERATIONS 100000
 void benchmark_getpid(int iterations) {
@@ -160,6 +167,148 @@ void benchmark_ctx_switch(int iterations) {
     printf("Avg context switch latency: %d us\n", (1000 * (t1 - t0)) / (iterations * 2));
 }
 
+// from usertests.c
+// on uva os, sometimes trigger a kernel panic -- TBD 
+#define N_CHILD 50
+unsigned char child_stk[N_CHILD][1024]; 
+void forktest(char *s)
+{
+
+  int n, pid;
+  int t0, t1;
+  t0 = uptime_ms();
+
+  for(n=0; n<N_CHILD; n++){
+    pid = fork();
+    // pid = clone(0 /* dont care*/, child_stk[n] + 1024, SIGCHLD, 0);
+    if(pid < 0)
+      break;  // this tests if kernel handles fork() failure right (e.g. free sources? locks?)
+    if(pid == 0)
+      exit(0);
+    printf("forked once %d\n", n);
+  }
+
+  if (n == 0) {
+    printf("%s: no fork at all!\n", s);
+    exit(1);
+  }
+
+//   if(n == N_CHILD){
+//     printf("%s: fork claimed to work 1000 times!\n", s);
+//     exit(1);
+//   }
+
+  t1 = uptime_ms();
+  printf("Total time for %d fork()s: %d ms\n", n, t1 - t0);
+  printf("Avg fork() latency: %d us\n", (1000 * (t1 - t0)) / n);  
+  
+  for(; n > 0; n--){
+    if(wait(0) < 0){
+      printf("%s: wait stopped early\n", s);
+      exit(1);
+    }
+  }
+
+  if(wait(0) != -1){
+    printf("%s: wait got too many\n", s);
+    exit(1);
+  }
+  printf("%s: all done\n", s);  
+}
+
+// based on countfree() in usertests.c
+// not working for xv6-rpi3, b/c musl does not have sbrk
+// cf sbrk.c in musl
+void test_sbrk() {
+    enum{ N = 50 };
+    int t0, t1;
+    t0 = uptime_ms();
+    for (int i = 0; i < N; i++) {
+        unsigned long a = (unsigned long)sbrk(4096);
+        // unsigned long a = (unsigned long)brk(4096); // not calling to kernel?
+        if(a == 0xffffffffffffffff) { // failed to alloc, quit
+            break; 
+        }
+        // modify the memory to make sure it's really allocated.
+        *(char *)(a + 4096 - 1) = 1;
+    }
+    t1 = uptime_ms();
+    printf("Total time for %d sbrk()s: %d ms\n", N, t1 - t0);
+    printf("Avg sbrk() latency: %d us\n", (1000 * (t1 - t0)) / N);
+}
+
+// fxl: sys_brk returns oldsz if failed, newsz if succeeded (diff from "man brk")
+void test_brk() {
+    enum { N = 50 };
+    int t0, t1;
+    void *initial_brk = sbrk(0); // Get the current program break
+    void *current_brk = initial_brk;
+
+    printf("Initial program break: %p\n", initial_brk); // ok
+
+    t0 = uptime_ms();
+    int i;
+    for (i = 0; i < N; i++) {
+        current_brk += 4096;
+        // if (brk(current_brk) != (int)current_brk) { // Failed to set new program break
+        //     break;
+        // }
+        if (brk(current_brk)!=0) {printf("brk failed\n"); break;} 
+        // Modify the memory to make sure it's really allocated.
+        *(char *)(current_brk - 1) = 1;
+    }
+    t1 = uptime_ms();
+
+    printf("Total time for %d brk()s: %d ms\n", i, t1 - t0);
+    printf("Avg brk() latency: %d us\n", (1000 * (t1 - t0)) / i);
+}
+
+#define N 10 
+// static buf
+void test_memset0() {
+    enum{ MB = 4 };
+    int t0, t1;
+    static char buf[MB * 1024 * 1024]; // Static buffer
+    t0 = uptime_ms();
+    for (int i = 0; i < N; i++) // 10 times
+        memset(buf, i, MB * 1024 * 1024);
+    t1 = uptime_ms();
+    printf("Total time for memset(1) %d MB: %d ms\n", N * MB, t1 - t0);
+    printf("Avg memset() latency: %d us per MB\n", 1000 * (t1 - t0) / MB / N);
+}
+
+
+// malloc, will call mmap(), which is unimplemented
+void test_memset1() {
+    enum{ MB = 4 };
+    int t0, t1;
+    char *buf = malloc(MB * 1024  * 1024); assert(buf);
+    t0 = uptime_ms();
+    for (int i = 0; i < N; i++) // 10 times
+        memset(buf, i, MB * 1024  * 1024);
+    t1 = uptime_ms();
+    printf("Total time for memset(1) %d MB: %d ms\n", N*MB, t1 - t0);
+    printf("Avg memset() latency: %d us per MB\n", 1000*(t1 - t0) /MB/N);
+    free(buf);     
+}
+
+// use sbrk ... musl directly returns -1?? (not getting into kernel) why
+// in kernel, it's brk, not sbrk. but even brk is unimplemented.
+void test_memset() {
+    enum{ MB = 4 };
+    int t0, t1;
+    char *buf = sbrk(MB * 1024 * 1024); 
+    if(buf == (void *)-1) {
+        printf("sbrk failed\n");
+        return;
+    }
+    t0 = uptime_ms();
+    for (int i = 0; i < N; i++) // 10 times
+        memset(buf, i, MB * 1024 * 1024);
+    t1 = uptime_ms();
+    printf("Total time for memset(1) %d MB: %d ms\n", N*MB, t1 - t0);
+    printf("Avg memset() latency: %d us per MB\n", 1000*(t1 - t0) /MB/N);
+}
 
 int main(int argc, char *argv[]) {
     int iterations = DEFAULT_ITERATIONS;
@@ -185,9 +334,21 @@ int main(int argc, char *argv[]) {
             }
             printf("iterations: %d\n", iterations);
             benchmark_ctx_switch(iterations);
+        } else if (strcmp(argv[1], "fork") == 0) {
+            forktest("forktest");
+            return 1; 
+        } else if (strcmp(argv[1], "sbrk") == 0) {
+            test_sbrk();
+            return 1;         
+        } else if (strcmp(argv[1], "brk") == 0) {
+            test_brk();
+            return 1;        
+        } else if (strcmp(argv[1], "memset") == 0) {
+            test_memset();
+            return 1;        
         } else {
             printf("Unknown benchmark: %s\n", argv[1]);
-            printf("Available benchmarks: getpid, file, ctx\n");
+            printf("Available benchmarks: getpid, file, ctx, fork\n");
             return 1;
         }
     } else {

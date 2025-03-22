@@ -12,18 +12,23 @@ sys_yield()
     return 0;
 }
 
+// fxl: brk, not sbrk (sbrk is not a syscall in musl
+// returns oldsz if failed, newsz if succeeded (diff from "man brk")
+//  "// man brk - "On success, brk() returns zero.  On error, -1 is returned""
+// also cf brk.c in musl 3/22/25.
 size_t
-sys_brk()
+sys_brk() 
 {
     struct proc *p = thisproc();
     size_t sz, newsz, oldsz = p->sz;
 
-    panic("sys_brk: unimplemented. ");
+    // panic("sys_brk: unimplemented. "); // fxl: !!!
 
     if (argu64(0, &newsz) < 0)
         return oldsz;
 
     trace("name %s: 0x%llx to 0x%llx", p->name, oldsz, newsz);
+    // info("name %s: 0x%llx to 0x%llx", p->name, oldsz, newsz);
 
     if (newsz == 0)
         return oldsz;
@@ -39,6 +44,7 @@ sys_brk()
     return p->sz;
 }
 
+// fxl: it's basically unimplemented???
 size_t
 sys_mmap()
 {
@@ -70,7 +76,7 @@ sys_mmap()
             warn("non-rw unimplemented");
             return -1;
         }
-        panic("unimplemented. ");
+        panic("sys_mmap: unimplemented.");
         return -1;
     }
 }
@@ -83,6 +89,7 @@ sys_clone()
     if (argu64(0, &flag) < 0 || argu64(1, (uint64_t *) & childstk) < 0)
         return -1;
     trace("flags 0x%llx, child stack 0x%p", flag, childstk);
+    // info("flags 0x%llx, child stack 0x%p", flag, childstk);
     if (flag != 17) {
         warn("flags other than SIGCHLD are not supported");
         return -1;
