@@ -28,6 +28,7 @@ extern int sys_mkdirat();
 extern int sys_mknodat();
 extern int sys_close();
 extern int sys_writev();
+extern int sys_write();  // fxl
 extern int sys_read();
 
 /* Check if a block of memory lies within the process user space. */
@@ -223,8 +224,15 @@ syscall1(struct trapframe *tf)
     case SYS_openat:
         return sys_openat();
 
+    // case SYS_unlinkat: 
+    //     return sys_unlink(); // fxl added: might need a bit interface work? TBD
+
+    // no write(), but writev() b/c that's used by musl?
     case SYS_writev:
         return sys_writev();
+
+    case SYS_write: // added by fxl. is this right?
+        return sys_write();
 
     case SYS_read:
         return sys_read();

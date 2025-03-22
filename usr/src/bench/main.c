@@ -14,9 +14,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
+#include <sys/uio.h> // For writev()
 
 #define _GNU_SOURCE
 #include <sched.h> // clone
+
 // #define prxxx printf
 #define prxxx(...)
 
@@ -47,15 +49,21 @@ void benchmark_getpid(int iterations) {
 // likely b/c of sd.c flaw, for continous reads/writes, there's a sd card error (cf note-benchmarks.txt)
 // for this reason, can only test a reduced number of iterations (for smaller read/writes) and cannot test 1MB of read/write
 
-#define TEST_FILE "/d/testfile"
+// #define TEST_FILE "/d/testfile"
+#define TEST_FILE "/testfile"
 #define FILE_SIZES_COUNT 4
 // kernel malloc can do 1MB at most. cf kernel/alloc.c
-// Iterations for 4K, 128K, 512K, 1M
-const int FILE_SIZES[FILE_SIZES_COUNT] = {4096, 131072, 524288, 0x100000 /*1MB*/};
+// Iterations for 4K, 64KB, 512K, 1M
+// 128KB file  seems supported (xv6
+// const int FILE_SIZES[FILE_SIZES_COUNT] = {4096, 131072, 524288, 0x100000 /*1MB*/};
+const int FILE_SIZES[FILE_SIZES_COUNT] = {4096, 64*1024, 524288, 0x100000 /*1MB*/};
 // const int FILE_ITERATIONS[FILE_SIZES_COUNT] = {10000, 1000, 100, 10};        // sd writes fail at ~4000 4KB writes
-const int FILE_ITERATIONS[FILE_SIZES_COUNT] = {1000, 50, 10, 1};
+// const int FILE_ITERATIONS[FILE_SIZES_COUNT] = {1000, 50, 10, 1};
+const int FILE_ITERATIONS[FILE_SIZES_COUNT] = {100, 10, 10, 1};
 
 char buffer[2097152]; // 2MB buffer
+
+// unimplemented: unlink, write(writev instead), lseek. have to find workaround
 void benchmark_file() {
     int fd, t0, t1;
     // unlink(TEST_FILE); // Ensure the file does not exist before starting
@@ -65,9 +73,11 @@ void benchmark_file() {
         int iterations = FILE_ITERATIONS[i];
         memset(buffer, 'A', size);
 
-        // Write benchmark
-#if 1
-        unlink(TEST_FILE); // Ensure the file does not exist before starting
+        ////////////////////////////////////////////////////
+        // Write benchmark        
+#if 0
+        // unlink(TEST_FILE); // Ensure the file does not exist before starting
+        
         fd = open(TEST_FILE, O_CREAT | O_RDWR);
         if (fd < 0) {
             printf("Failed to open file for writing\n");
@@ -86,25 +96,64 @@ void benchmark_file() {
                 size, iterations, t1 - t0, 1000 * (t1 - t0) / iterations, size * iterations * 1000 / (t1 - t0 + 1) / 1024);
 
 #endif
-        // Read benchmark
-        fd = open(TEST_FILE, O_RDONLY);
-        if (fd < 0) {
-            printf("Failed to open file for reading\n");
-            return;
-        }
+        struct iovec iov[1];
+        ssize_t bytes_written;
+
         t0 = uptime();
+        // Perform writev() in a loop
         for (int j = 0; j < iterations; j++) {
-            read(fd, buffer, size);
-            lseek(fd, 0, SEEK_SET);
-            prxxx("read %d bytes...%d/%d\n", size, j, iterations);
+            // Open the file (this resets the file pointer to the beginning)
+            fd = open(TEST_FILE, O_CREAT | O_RDWR, 0644);
+            if (fd < 0) {
+                printf("Failed to open file for writing\n");
+                return;
+            }
+            // Prepare the iovec structure
+            iov[0].iov_base = (void *)buffer;
+            iov[0].iov_len = size;
+            // Write the buffer
+            bytes_written = writev(fd, iov, 1);
+            if (bytes_written < 0) {
+                printf("writev failed at iteration %d\n", j);
+                close(fd);
+                return;
+            }
+            prxxx("writev %ld bytes...%d/%d\n", size, j, iterations);
+            close(fd);
         }
         t1 = uptime();
-        close(fd);
+
+        printf("Write %ld bytes (%d iterations): %d ms, Avg Latency: %d us, Throughput: %ld KB/s\n",
+               (long)size, iterations, t1 - t0, 1000 * (t1 - t0) / iterations,
+               (long)size * iterations * 1000 / (t1 - t0 + 1) / 1024);
+
+        ////////////////////////////////////////////////////
+        // Read benchmark        
+        t0 = uptime();
+        for (int j = 0; j < iterations; j++) {
+            // Open the file (this resets the file pointer to the beginning)
+            fd = open(TEST_FILE, O_RDONLY);
+            if (fd < 0) {
+                printf("Failed to open file for reading\n");
+                return;
+            }            
+            ssize_t bytes_read = read(fd, buffer, size);
+            if (bytes_read < 0) {
+                printf("read failed at iteration %d\n", j);
+                close(fd);
+                return;
+            }            
+            // lseek(fd, 0, SEEK_SET);
+            prxxx("read %ld bytes...%d/%d\n", size, j, iterations);
+            close(fd);
+        }
+        t1 = uptime();
+        // close(fd);
         printf("Read %ld bytes (%d iterations): %d ms, Avg Latency: %d us, Throughput: %ld KB/s\n",
             //    size, iterations, t1 - t0, 1000 * (t1 - t0) / iterations, (size * iterations / (t1 - t0 + 1)) / 1024);
             size, iterations, t1 - t0, 1000 * (t1 - t0) / iterations, size * iterations * 1000 / (t1 - t0 + 1) / 1024);
     }
-    // unlink(TEST_FILE);
+    // unlink(TEST_FILE); //
 }
 
 // ------------- context switch benchmark ------------------- //
@@ -112,6 +161,7 @@ void benchmark_file() {
 // idea: ping poing 1 byte, via pipes, between two processes
 #define DEFAULT_SWITCH_ITERATIONS 1000
 
+// uniplemented: write
 void benchmark_ctx_switch(int iterations) {
     // in our kernel pipe implementation, a pair of pipe fds only has one buffer.
     // therefore, if task1 writes to fd[1] (fd for read) and reads from fd[0] (fd for write),
