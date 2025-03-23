@@ -21,6 +21,11 @@ forktest: all done
 $ bench qsort
 Total time for qsort() 100000 elements: 446 ms
 
+$ md5 16k.bin
+MD5 time: 17 us
+65182ad82b9cdb58fec72d1176cb2627        16k.bin
+
+
 # brk
 $ bench brk
 Initial program break: 0xa7aee8
@@ -29,7 +34,6 @@ Avg brk() latency: 4 us
 [0]exit: exit: pid 15, err 1
 
 
-#
 # bench ctx
 iterations: 1000
 Total time for 1000 context switches: 86 ms
@@ -44,5 +48,7 @@ Avg memset() latency: 900 us per MB
 $ bench file
 Write 4096 bytes (100 iterations): 3383 ms, Avg Latency: 33830 us, Throughput: 118 KB/s
 Read 4096 bytes (100 iterations): 218 ms, Avg Latency: 2180 us, Throughput: 1826 KB/s
+Write 16384 bytes (50 iterations): 6626 ms, Avg Latency: 132520 us, Throughput: 120 KB/s
+Read 16384 bytes (50 iterations): 693 ms, Avg Latency: 13860 us, Throughput: 1152 KB/s
 Write 65536 bytes (10 iterations): 5797 ms, Avg Latency: 579700 us, Throughput: 110 KB/s
 Read 65536 bytes (10 iterations): 655 ms, Avg Latency: 65500 us, Throughput: 975 KB/s
