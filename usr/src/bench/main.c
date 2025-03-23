@@ -53,10 +53,10 @@ void benchmark_getpid(int iterations) {
 #define TEST_FILE "/testfile"
 #define FILE_SIZES_COUNT 5
 // kernel malloc can do 1MB at most. cf kernel/alloc.c
-// Iterations for 4K, 64KB, 512K, 1M
+// Iterations for 4K, 16KB, 512K, 1M
 // 128KB file  seems supported (xv6
 const int FILE_SIZES[FILE_SIZES_COUNT] = {4096, 16 *1024, 131072, 524288, 0x100000 /*1MB*/};
-const int FILE_ITERATIONS[FILE_SIZES_COUNT] = {1000, 100, 50, 10, 1};
+const int FILE_ITERATIONS[FILE_SIZES_COUNT] = {100, 50, 50, 10, 1};
 
 char buffer[2097152]; // 2MB buffer
 
@@ -72,27 +72,6 @@ void benchmark_file() {
 
         ////////////////////////////////////////////////////
         // Write benchmark        
-#if 0
-        // unlink(TEST_FILE); // Ensure the file does not exist before starting
-        
-        fd = open(TEST_FILE, O_CREAT | O_RDWR);
-        if (fd < 0) {
-            printf("Failed to open file for writing\n");
-            return;
-        }
-        t0 = uptime();
-        for (int j = 0; j < iterations; j++) {
-            write(fd, buffer, size);
-            lseek(fd, 0, SEEK_SET);
-            prxxx("write %d bytes...%d/%d\n", size, j, iterations);
-        }
-        t1 = uptime();
-        close(fd);
-        printf("Write %ld bytes (%d iterations): %d ms, Avg Latency: %d us, Throughput: %ld KB/s\n",
-            //    size, iterations, t1 - t0, 1000 * (t1 - t0) / iterations, (size * iterations / (t1 - t0 + 1)) / 1024);
-                size, iterations, t1 - t0, 1000 * (t1 - t0) / iterations, size * iterations * 1000 / (t1 - t0 + 1) / 1024);
-
-#endif
         struct iovec iov[1];
         ssize_t bytes_written;
 
