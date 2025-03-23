@@ -332,6 +332,14 @@ static void MD5_Final(unsigned char *result, MD5_CTX *ctx) {
 	memset(ctx, 0, sizeof(*ctx));
 }
 
+#include <sys/ioctl.h>
+// in ms, cf kern/syscall.c
+int uptime_ms(void) {    
+    unsigned long ret = ioctl(0/*does not care*/, 0x1000); 
+    // printf("uptime: %lu\n", ret);
+    return (int)ret;  // we indeed lose precision here.
+}
+
 #define BUFFER_SIZE	512
 
 int main(int argc, char **argv) {
@@ -354,6 +362,9 @@ int main(int argc, char **argv) {
 		from_file=1;
 	}
 
+	unsigned int t0, t1; 
+	t0 = uptime_ms();
+
 	MD5_Init(&c);
 	bytes=read(fd, buf, BUFFER_SIZE);
 	while(bytes > 0) {
@@ -362,6 +373,9 @@ int main(int argc, char **argv) {
 	}
 
 	MD5_Final(out, &c);
+	t1 = uptime_ms();
+	printf("MD5 time: %d us\n", t1 - t0);
+
 
 	for(n=0; n<MD5_DIGEST_LENGTH; n++) {
 		printf("%02x", out[n]); 

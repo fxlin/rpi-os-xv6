@@ -51,15 +51,12 @@ void benchmark_getpid(int iterations) {
 
 // #define TEST_FILE "/d/testfile"
 #define TEST_FILE "/testfile"
-#define FILE_SIZES_COUNT 4
+#define FILE_SIZES_COUNT 5
 // kernel malloc can do 1MB at most. cf kernel/alloc.c
 // Iterations for 4K, 64KB, 512K, 1M
 // 128KB file  seems supported (xv6
-// const int FILE_SIZES[FILE_SIZES_COUNT] = {4096, 131072, 524288, 0x100000 /*1MB*/};
-const int FILE_SIZES[FILE_SIZES_COUNT] = {4096, 64*1024, 524288, 0x100000 /*1MB*/};
-// const int FILE_ITERATIONS[FILE_SIZES_COUNT] = {10000, 1000, 100, 10};        // sd writes fail at ~4000 4KB writes
-// const int FILE_ITERATIONS[FILE_SIZES_COUNT] = {1000, 50, 10, 1};
-const int FILE_ITERATIONS[FILE_SIZES_COUNT] = {100, 10, 10, 1};
+const int FILE_SIZES[FILE_SIZES_COUNT] = {4096, 16 *1024, 131072, 524288, 0x100000 /*1MB*/};
+const int FILE_ITERATIONS[FILE_SIZES_COUNT] = {1000, 100, 50, 10, 1};
 
 char buffer[2097152]; // 2MB buffer
 
@@ -267,11 +264,13 @@ void forktest(char *s)
 }
 
 // based on countfree() in usertests.c
-// not working for xv6-rpi3, b/c musl does not have sbrk
+// NOT working for xv6-rpi3, b/c musl does not have sbrk
 // cf sbrk.c in musl
 void test_sbrk() {
-    enum{ N = 50 };
+    enum{ N = 500 };
     int t0, t1;
+    printf("wont work. cf sbrk.c in musl, which is only for returning the current brk\n");
+
     t0 = uptime_ms();
     for (int i = 0; i < N; i++) {
         unsigned long a = (unsigned long)sbrk(4096);
@@ -287,9 +286,23 @@ void test_sbrk() {
     printf("Avg sbrk() latency: %d us\n", (1000 * (t1 - t0)) / N);
 }
 
-// fxl: sys_brk returns oldsz if failed, newsz if succeeded (diff from "man brk")
+// below is a updated version of sbrk.c in musl, which simply fails (maybe malloc() jst
+// uses mmap instead). we fixed that by using the syscall brk 
+// (so that we dont have to change musl and commit it)
+#include <unistd.h>
+#include <errno.h>
+#include "syscall.h"
+int mybrk(void *end) {
+    if ((void *)syscall(SYS_brk, end) == end) return 0;
+	return -1;
+}
+
+// fxl: 
+// cf sbrk.c in musl, which is only for returning the current brk when inc==0
+// so first get the current brk using sbrk(), then calls brk() to set the new brk
+// sys_brk returns oldsz if failed, newsz if succeeded (diff from "man brk")
 void test_brk() {
-    enum { N = 50 };
+    enum { N = 500 };
     int t0, t1;
     void *initial_brk = sbrk(0); // Get the current program break
     void *current_brk = initial_brk;
@@ -303,7 +316,7 @@ void test_brk() {
         // if (brk(current_brk) != (int)current_brk) { // Failed to set new program break
         //     break;
         // }
-        if (brk(current_brk)!=0) {printf("brk failed\n"); break;} 
+        if (mybrk(current_brk)!=0) {printf("brk failed\n"); break;} 
         // Modify the memory to make sure it's really allocated.
         *(char *)(current_brk - 1) = 1;
     }
@@ -346,8 +359,9 @@ void test_memset1() {
 // in kernel, it's brk, not sbrk. but even brk is unimplemented.
 void test_memset() {
     enum{ MB = 4 };
-    int t0, t1;
+    int t0, t1;    
     char *buf = sbrk(MB * 1024 * 1024); 
+    printf("wont work b/c musl's sbrk does not work. cf its source"); 
     if(buf == (void *)-1) {
         printf("sbrk failed\n");
         return;
@@ -423,7 +437,7 @@ int main(int argc, char *argv[]) {
             test_brk();
             return 1;        
         } else if (strcmp(argv[1], "memset") == 0) {
-            test_memset();
+            test_memset0();  // static buf
             return 1;        
         } else if (strcmp(argv[1], "qsort") == 0) {
             test_qsort();

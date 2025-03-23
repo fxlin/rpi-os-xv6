@@ -1,0 +1,48 @@
+bench-res.txt
+
+3/23/25
+8cf6328
+# ... 
+$ bench fork
+
+# getpid
+$ bench getpid
+Total time for 100000 getpid() calls: 161 ms avg 1 us
+
+
+# fork 
+Total time for 50 fork()s: 3215 ms
+Avg fork() latency: 64300 us
+forktest: all done
+[2]exit: exit: pid 62, err 1
+
+
+# qsort 100k elements
+$ bench qsort
+Total time for qsort() 100000 elements: 446 ms
+
+# brk
+$ bench brk
+Initial program break: 0xa7aee8
+Total time for 500 brk()s: 2 ms
+Avg brk() latency: 4 us
+[0]exit: exit: pid 15, err 1
+
+
+#
+# bench ctx
+iterations: 1000
+Total time for 1000 context switches: 86 ms
+Avg context switch latency: 43 us
+
+# memset ..
+$ bench memset
+Total time for memset(1) 40 MB: 36 ms
+Avg memset() latency: 900 us per MB
+[1]exit: exit: pid 7, err 1
+
+$ bench file
+Write 4096 bytes (100 iterations): 3383 ms, Avg Latency: 33830 us, Throughput: 118 KB/s
+Read 4096 bytes (100 iterations): 218 ms, Avg Latency: 2180 us, Throughput: 1826 KB/s
+Write 65536 bytes (10 iterations): 5797 ms, Avg Latency: 579700 us, Throughput: 110 KB/s
+Read 65536 bytes (10 iterations): 655 ms, Avg Latency: 65500 us, Throughput: 975 KB/s
