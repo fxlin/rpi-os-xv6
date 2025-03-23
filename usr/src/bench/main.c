@@ -360,6 +360,35 @@ void test_memset() {
     printf("Avg memset() latency: %d us per MB\n", 1000*(t1 - t0) /MB/N);
 }
 
+int compare_uint32(const void *a, const void *b) {
+    uint32_t val1 = *(const uint32_t *)a;
+    uint32_t val2 = *(const uint32_t *)b;
+    return (val1 > val2) - (val1 < val2);
+}
+void test_qsort() {
+    // enum { NUM_ELEMENTS = 1000*1000 }; // 10k 
+    enum { NUM_ELEMENTS = 1000 * 100};
+    int t0, t1;
+    // uint32_t *array = malloc(NUM_ELEMENTS * sizeof(uint32_t));
+    // if (!array) {
+    //     printf("Memory allocation failed");
+    //     return;
+    // }
+    // static buffer. 
+    static uint32_t array[NUM_ELEMENTS];
+
+    // Fill array with random values
+    for (size_t i = 0; i < NUM_ELEMENTS; ++i) {
+        array[i] = rand(); //newlib has this?
+    }
+
+    t0 = uptime_ms();
+    qsort(array, NUM_ELEMENTS, sizeof(uint32_t), compare_uint32);
+    t1 = uptime_ms();
+    printf("Total time for qsort() %d elements: %d ms\n", NUM_ELEMENTS, t1 - t0);
+}
+
+
 int main(int argc, char *argv[]) {
     int iterations = DEFAULT_ITERATIONS;
 
@@ -396,9 +425,12 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[1], "memset") == 0) {
             test_memset();
             return 1;        
+        } else if (strcmp(argv[1], "qsort") == 0) {
+            test_qsort();
+            return 1;
         } else {
             printf("Unknown benchmark: %s\n", argv[1]);
-            printf("Available benchmarks: getpid, file, ctx, fork\n");
+            printf("Available benchmarks: getpid, file, ctx, fork, sbrk, brk, memset, qsort\n");
             return 1;
         }
     } else {

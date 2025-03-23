@@ -27,11 +27,12 @@ KERN_ELF := $(BUILD_DIR)/kernel8.elf
 KERN_IMG := $(BUILD_DIR)/kernel8.img
 SD_IMG := $(BUILD_DIR)/sd.img
 
-all:
 # will download firmware
-#	$(MAKE) -C boot
+all:
+	$(MAKE) -C boot
 	$(MAKE) -C usr
 	$(MAKE) $(SD_IMG)
+	cp $(SD_IMG) /mnt/c/data/tmp/
 
 # Automatically find sources and headers
 SRCS := $(shell find $(SRC_DIRS) -name *.c -or -name *.S)
