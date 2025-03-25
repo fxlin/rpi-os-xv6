@@ -374,7 +374,7 @@ int main(int argc, char **argv) {
 
 	MD5_Final(out, &c);
 	t1 = uptime_ms();
-	printf("MD5 time: %d us\n", t1 - t0);
+	printf("MD5 time: %d ms\n", t1 - t0);
 
 
 	for(n=0; n<MD5_DIGEST_LENGTH; n++) {

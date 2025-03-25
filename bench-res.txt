@@ -7,8 +7,7 @@ $ bench fork
 
 # getpid
 $ bench getpid
-Total time for 100000 getpid() calls: 161 ms avg 1 us
-
+Total time for 100000 getpid() calls: 161 ms avg 1.61 us per call
 
 # fork 
 Total time for 50 fork()s: 3215 ms
